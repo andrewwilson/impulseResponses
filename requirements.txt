@@ -1,0 +1,7 @@
+numpy
+scipy
+matplotlib
+jupyter
+librosa
+pyloudnorm
+soundfile
