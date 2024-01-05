@@ -1,5 +1,7 @@
+import numpy as np
 import pytest
 
+import audio
 from audio import load_sample, Sample
 
 
@@ -28,20 +30,20 @@ def test_info(sample: Sample):
 
 def test_slice_invalid_num_samples(sample):
     with pytest.raises(AssertionError) as excinfo:
-        sample.slice(333.3)
+        sample.slices(333.3)
     assert "samples_per_slice must be an integer" in str(excinfo.value)
 
 
 def test_slice_overlap(sample):
     with pytest.raises(AssertionError) as excinfo:
-        sample.slice(100, 1)
+        sample.slices(100, 1)
     assert "overlap" in str(excinfo.value)
 
 
 def test_slice_2_parts(sample: Sample):
     samples = sample.samples
     n = samples // 2
-    parts = sample.slice(samples_per_slice=n)
+    parts = sample.slices(samples_per_slice=n)
 
     assert parts is not None
     assert len(parts) == 2
@@ -54,7 +56,7 @@ def test_slice_2_parts(sample: Sample):
 def test_slice_with_overlap(sample: Sample):
     samples = sample.samples
     n = samples // 2
-    parts = sample.slice(samples_per_slice=n, overlap=0.5)
+    parts = sample.slices(samples_per_slice=n, overlap=0.5)
 
     assert parts is not None
     assert len(parts) == 3
@@ -64,3 +66,9 @@ def test_slice_with_overlap(sample: Sample):
     assert parts[0].peak <= sample.peak
     assert parts[1].peak <= sample.peak
     assert parts[2].peak <= sample.peak
+
+
+def test_loudness_for_short_slice(sample: Sample):
+    samples = sample.slices(samples_per_slice=audio.duration_to_samples(0.01, sample.sr))
+    l = samples[0].loudness
+    assert np.isnan(l)

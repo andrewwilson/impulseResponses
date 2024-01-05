@@ -37,8 +37,14 @@ class Sample():
 
     @property
     def loudness(self):
-        meter = pyloudnorm.Meter(self.sr)
-        return meter.integrated_loudness(self.signal)
+        try:
+            meter = pyloudnorm.Meter(self.sr)
+            return meter.integrated_loudness(self.signal)
+        except ValueError as ex:
+            # loudness not available for short samples..
+            if "Audio must have length greater than the block size" in str(ex):
+                return np.nan
+            raise ex
 
     @property
     def rms(self):
@@ -59,17 +65,25 @@ class Sample():
 
         return ser
 
-    def slice(self, samples_per_slice: int, overlap: float = 0.0) -> List[Any]:
+    def slices(self, samples_per_slice: int, overlap: float = 0.0) -> List[Any]:
+        """
+        creates a list of slices of this sample.
+        :param samples_per_slice:
+        :param overlap:
+        :return:
+        """
         assert 0 <= overlap < 1, f"overlap must be >= 0 and < 1"
         assert type(samples_per_slice) == int, f"samples_per_slice must be an integer: {samples_per_slice}"
+        assert samples_per_slice > 3
+
         step_size = int(samples_per_slice * (1 - overlap))
 
-        res = []
+        parts = []
         for i in range(0, len(self.signal) - samples_per_slice + 1, step_size):
             signal_part = self.signal[i:i + samples_per_slice]
-            part_sample = Sample(signal_part, self.sr)
-            res.append(part_sample)
-        return res
+            parts.append(signal_part)
+        return [Sample(signal_part, self.sr, self.name + f" {i + 1:3d}/{len(parts)}")
+                for i, signal_part in enumerate(parts)]
 
 
 def apply_window(signal_section, window):
@@ -78,7 +92,6 @@ def apply_window(signal_section, window):
 
 def load_sample(filename: str, sr=None) -> Sample:
     """
-
     :param filename:
     :param sr: sample rate to normalise to. pass None to load at original sample rate
     :return: signal, sr
@@ -88,18 +101,21 @@ def load_sample(filename: str, sr=None) -> Sample:
     return Sample(signal, sr, filename)
 
 
-def split_sample():
-    pass
+def info_grid(samples: List[Sample]) -> pd.DataFrame:
+    """
+    Returns a dataframe with a row of info for each samples
+    :param samples:
+    :return: pandas DataFrame of sample info rows.
+    """
+    return pd.DataFrame([s.info() for s in samples])
 
 
 if __name__ == '__main__':
 
     sample_dir = 'samples'
-
-    rows = []
+    samples = []
     for filename in [f for f in os.listdir('samples') if f.endswith('.aif') or f.endswith('.wav')]:
-        print(filename)
         sample = load_sample(os.path.join(sample_dir, filename))
-        rows.append(sample.info())
+        samples.append(sample)
 
-    print(pd.DataFrame(rows))
+    print(info_grid(samples))
