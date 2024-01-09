@@ -1,8 +1,11 @@
+import os
+
 import numpy as np
 import pytest
 
 import audio
 from audio import load_sample, Sample, filter_slices
+import tempfile
 
 
 @pytest.fixture(scope="module")
@@ -150,3 +153,11 @@ def test_apply_ir(sample: Sample, sample2: Sample):
     dist = audio.distance_between(sample, sample2)
     ir = audio.create_ir(sample, sample2)
     sample.apply_ir()
+
+
+def test_save_as_is_lossless(sample:Sample):
+    file = tempfile.mktemp(".wav", "tmpfoo")
+    sample.save_as(file)
+    loaded_sample = audio.load_sample(file)
+    assert np.abs(sample.signal - loaded_sample.signal).sum() == 0
+    os.unlink(file)
