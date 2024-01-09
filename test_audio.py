@@ -117,18 +117,18 @@ def test_prepare_slices_no_overlap_no_discard(sample: Sample, sample2: Sample):
 
 def test_prepare_slices_with_overlap_and_no_discard(sample: Sample, sample2: Sample):
     # samples are 16 sec
-    slices = audio.prepare_slices(sample, sample2, 1.0, 0.9,
+    slices = audio.prepare_slices(sample, sample2, 1.0, 0.5,
                                   -24.0, 0, True,
                                   lambda n: np.kaiser(n, 14))
-    assert len(list(slices)) == 151
+    assert len(list(slices)) == 31
 
 
 def test_prepare_slices_with_overlap_and_discard(sample: Sample, sample2: Sample):
     # samples are 16 sec
-    slices = audio.prepare_slices(sample, sample2, 1.0, 0.9,
+    slices = audio.prepare_slices(sample, sample2, 1.0, 0.5,
                                   -24.0, 0.3, True,
                                   lambda n: np.kaiser(n, 14))
-    assert len(list(slices)) == 144
+    assert len(list(slices)) == 30
 
 
 def test_create_average_ir(sample: Sample, sample2: Sample):
