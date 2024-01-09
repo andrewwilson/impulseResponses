@@ -103,7 +103,7 @@ class Sample():
 
     def save_as(self, filename, sample_rate=None):
         sample_rate = sample_rate if sample_rate is not None else self.sr
-        soundfile.write(filename, self.signal, sample_rate)
+        soundfile.write(filename, self.signal, sample_rate, subtype='PCM_24')
 
 
     def _slices(self, samples_per_slice: int, overlap: float = 0.0) -> List[Any]:
