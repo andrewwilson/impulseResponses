@@ -6,7 +6,7 @@ import librosa
 import numpy as np
 import pyloudnorm
 import soundfile
-from scipy.signal import convolve, deconvolve
+from scipy.signal import convolve
 from scipy.fft import fft, ifft
 import logging
 
@@ -60,10 +60,11 @@ class Sample():
         new_sig = pyloudnorm.normalize.loudness(self.signal, self.loudness, target_loudness)
         return Sample(new_sig, self.sr, self.name + "(loudness normed)")
 
-    def with_signal(self, new_signal):
+    def with_signal(self, new_signal, name=None):
         """ create a sample with the given signal
         """
-        return Sample(new_signal, self.sr, self.name)
+        name = name if name is not None else 'processed ' + self.name
+        return Sample(new_signal, self.sr, name)
 
     @property
     def rms(self):
@@ -172,7 +173,7 @@ def prepare_slices(source: Sample, target: Sample,
                    normalise_loudness_to: float | None,
                    amplitude_threshold: float,
                    normalise_slices: bool,
-                   window_fn) -> List[Tuple[Sample]]:
+                   window_fn) -> List[Tuple[Sample,Sample]]:
     """
     Prepares a selection of slices from a source and target sample
     :param source:
