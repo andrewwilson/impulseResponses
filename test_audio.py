@@ -10,17 +10,17 @@ import tempfile
 
 @pytest.fixture(scope="module")
 def sample() -> Sample:
-    sample = load_sample('samples/Norman piezo 0003 [2024-01-01 134007].aif')
+    sample = load_sample('samples/Eastman piezo 0009 [2023-12-30 162118].aif')
     assert sample is not None
-    assert sample.duration == 82.0
+    assert sample.duration == 16.0
     return sample
 
 
 @pytest.fixture(scope="module")
 def sample2() -> Sample:
-    sample = load_sample('samples/Norman Mic 0003 [2024-01-01 134007].aif')
+    sample = load_sample('samples/Eastman mic 0009 [2023-12-30 162118].aif')
     assert sample is not None
-    assert sample.duration == 82.0
+    assert sample.duration == 16.0
 
     return sample
 
@@ -96,31 +96,39 @@ def test_loudness_for_short_slice(sample: Sample):
 
 def test_filter_slices(sample: Sample):
     slices = sample.slices(0.1, 0.0)
-    assert len(slices) == 60
+    assert len(slices) == 160
     filtered = filter_slices(slices, 1, measure_fn=lambda s: s.peak)
     assert len(filtered) == 1
 
     filtered = filter_slices(slices, 0, measure_fn=lambda s: s.peak)
-    assert len(filtered) == 60
+    assert len(filtered) == 160
 
 
 def test_prepare_slices_no_overlap_no_discard(sample: Sample, sample2: Sample):
-    # samples are 6.08 sec
+    # samples are 16 sec
 
     # slice with no overlap and no thresholding
-    slices = audio.prepare_slices(sample, sample2, 1.0, 0,
+    slices = audio.prepare_slices(sample, sample2, 1.0, 0.0,
                                   -24, 0, True,
                                   lambda n: np.kaiser(n, 14))
-    assert (len(slices) == 6)  # no overlap and no threshold filter
+    assert (len(slices) == 16)  # no overlap and no threshold filter
     assert len(slices[0]) == 2
 
 
+def test_prepare_slices_with_overlap_and_no_discard(sample: Sample, sample2: Sample):
+    # samples are 16 sec
+    slices = audio.prepare_slices(sample, sample2, 1.0, 0.9,
+                                  -24.0, 0, True,
+                                  lambda n: np.kaiser(n, 14))
+    assert len(list(slices)) == 151
+
+
 def test_prepare_slices_with_overlap_and_discard(sample: Sample, sample2: Sample):
-    # samples are 6.08 sec
+    # samples are 16 sec
     slices = audio.prepare_slices(sample, sample2, 1.0, 0.9,
                                   -24.0, 0.3, True,
                                   lambda n: np.kaiser(n, 14))
-    assert len(list(slices)) == 44
+    assert len(list(slices)) == 144
 
 
 def test_create_average_ir(sample: Sample, sample2: Sample):
@@ -146,16 +154,18 @@ def test_distance_between(sample: Sample, sample2: Sample):
     source = sample
     target = sample2.normalise_loudness(source.loudness)
     dist = audio.distance_between(source, target)
-    assert dist== 0.15075707
+    assert dist == 0.15075707
 
 
 def test_apply_ir(sample: Sample, sample2: Sample):
     dist = audio.distance_between(sample, sample2)
     ir = audio.create_ir(sample, sample2)
-    sample.apply_ir()
+    processed = sample.apply_ir(ir)
+    processed_dist = audio.distance_between(sample2, processed)
+    assert (processed_dist, dist) == (0, 0)
 
 
-def test_save_as_is_lossless(sample:Sample):
+def test_save_as_is_lossless(sample: Sample):
     file = tempfile.mktemp(".wav", "tmpfoo")
     sample.save_as(file)
     loaded_sample = audio.load_sample(file)
