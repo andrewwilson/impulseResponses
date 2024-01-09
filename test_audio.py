@@ -2,13 +2,22 @@ import numpy as np
 import pytest
 
 import audio
-from audio import load_sample, Sample
+from audio import load_sample, Sample, filter_slices
 
 
 @pytest.fixture(scope="module")
 def sample() -> Sample:
-    sample = load_sample('samples/Norman Mic 0001 [2024-01-01 133335].aif')
+    sample = load_sample('samples/Norman piezo 0003 [2024-01-01 134007].aif')
     assert sample is not None
+    assert sample.duration == 82.0
+    return sample
+
+
+@pytest.fixture(scope="module")
+def sample2() -> Sample:
+    sample = load_sample('samples/Norman Mic 0003 [2024-01-01 134007].aif')
+    assert sample is not None
+    assert sample.duration == 82.0
 
     return sample
 
@@ -28,22 +37,22 @@ def test_info(sample: Sample):
     assert info['loudness'] == sample.loudness
 
 
-def test_slice_invalid_num_samples(sample):
+def test_slices_invalid_num_samples(sample):
     with pytest.raises(AssertionError) as excinfo:
-        sample.slices(333.3)
+        sample._slices(333.3)
     assert "samples_per_slice must be an integer" in str(excinfo.value)
 
 
-def test_slice_overlap(sample):
+def test_slices_overlap(sample):
     with pytest.raises(AssertionError) as excinfo:
-        sample.slices(100, 1)
+        sample._slices(100, 1)
     assert "overlap" in str(excinfo.value)
 
 
-def test_slice_2_parts(sample: Sample):
+def test_slices_2_parts(sample: Sample):
     samples = sample.samples
     n = samples // 2
-    parts = sample.slices(samples_per_slice=n)
+    parts = sample._slices(samples_per_slice=n)
 
     assert parts is not None
     assert len(parts) == 2
@@ -53,10 +62,18 @@ def test_slice_2_parts(sample: Sample):
     assert parts[1].peak <= sample.peak
 
 
-def test_slice_with_overlap(sample: Sample):
+def test_slices_by_duration_2_parts(sample: Sample):
+    duration = sample.duration
+    parts = sample.slices(duration / 2, overlap=0.0)
+    assert len(parts) == 2
+    assert parts[0].duration == duration / 2
+    assert parts[1].duration == duration / 2
+
+
+def test_slices_with_overlap(sample: Sample):
     samples = sample.samples
     n = samples // 2
-    parts = sample.slices(samples_per_slice=n, overlap=0.5)
+    parts = sample._slices(samples_per_slice=n, overlap=0.5)
 
     assert parts is not None
     assert len(parts) == 3
@@ -69,6 +86,67 @@ def test_slice_with_overlap(sample: Sample):
 
 
 def test_loudness_for_short_slice(sample: Sample):
-    samples = sample.slices(samples_per_slice=audio.duration_to_samples(0.01, sample.sr))
+    samples = sample._slices(samples_per_slice=audio.duration_to_samples(0.01, sample.sr))
     l = samples[0].loudness
     assert np.isnan(l)
+
+
+def test_filter_slices(sample: Sample):
+    slices = sample.slices(0.1, 0.0)
+    assert len(slices) == 60
+    filtered = filter_slices(slices, 1, measure_fn=lambda s: s.peak)
+    assert len(filtered) == 1
+
+    filtered = filter_slices(slices, 0, measure_fn=lambda s: s.peak)
+    assert len(filtered) == 60
+
+
+def test_prepare_slices_no_overlap_no_discard(sample: Sample, sample2: Sample):
+    # samples are 6.08 sec
+
+    # slice with no overlap and no thresholding
+    slices = audio.prepare_slices(sample, sample2, 1.0, 0,
+                                  -24, 0, True,
+                                  lambda n: np.kaiser(n, 14))
+    assert (len(slices) == 6)  # no overlap and no threshold filter
+    assert len(slices[0]) == 2
+
+
+def test_prepare_slices_with_overlap_and_discard(sample: Sample, sample2: Sample):
+    # samples are 6.08 sec
+    slices = audio.prepare_slices(sample, sample2, 1.0, 0.9,
+                                  -24.0, 0.3, True,
+                                  lambda n: np.kaiser(n, 14))
+    assert len(list(slices)) == 44
+
+
+def test_create_average_ir(sample: Sample, sample2: Sample):
+    slices = audio.prepare_slices(sample, sample2, 1.0, 0,
+                                  -24.0, 0.3, True,
+                                  np.blackman)
+    ir = audio.create_average_ir(slices)
+    assert len(ir) == 2048
+
+
+def test_create_ir(sample: Sample, sample2: Sample):
+    ir = audio.create_ir(sample, sample2)
+    assert len(ir) == 2048
+
+
+def test_distance_between(sample: Sample, sample2: Sample):
+    assert audio.distance_between(sample, sample) == 0
+    assert audio.distance_between(sample2, sample2) == 0
+
+    dist = audio.distance_between(sample, sample2)
+    assert dist - 0.0018364589 < 1e-8
+
+    source = sample
+    target = sample2.normalise_loudness(source.loudness)
+    dist = audio.distance_between(source, target)
+    assert dist== 0.15075707
+
+
+def test_apply_ir(sample: Sample, sample2: Sample):
+    dist = audio.distance_between(sample, sample2)
+    ir = audio.create_ir(sample, sample2)
+    sample.apply_ir()
