@@ -76,6 +76,7 @@ class Sample():
     def info(self) -> pd.Series:
         ser = pd.Series()
         ser['name'] = self.name
+        ser['sr'] = self.sr
         ser['samples'] = self.samples
         ser['duration'] = self.duration
         ser['peak'] = self.peak
@@ -128,6 +129,11 @@ class Sample():
 
     def apply_ir(self, impulse_response):
         processed_signal = convolve(self.signal, impulse_response)
+        # processed signal will naturally be len(signal)+len(impulse_response)-1 long
+        assert len(processed_signal) == len(self.signal) + len(impulse_response)-1
+        # truncate it to preserve signal length
+        processed_signal = processed_signal[:len(self.signal)]
+        # check we got that right
         assert len(processed_signal) == len(self.signal)
         return self.with_signal(processed_signal)
 
