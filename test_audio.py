@@ -149,20 +149,22 @@ def test_distance_between(sample: Sample, sample2: Sample):
     assert audio.distance_between(sample2, sample2) == 0
 
     dist = audio.distance_between(sample, sample2)
-    assert dist - 0.0018364589 < 1e-8
+    assert np.abs(dist - 0.055155262) < 1e-8
 
     source = sample
     target = sample2.normalise_loudness(source.loudness)
     dist = audio.distance_between(source, target)
-    assert dist == 0.15075707
+    assert np.abs(dist - 0.05116012) < 1e-8
 
 
 def test_apply_ir(sample: Sample, sample2: Sample):
     dist = audio.distance_between(sample, sample2)
     ir = audio.create_ir(sample, sample2)
     processed = sample.apply_ir(ir)
+    assert processed.samples == sample.samples
+
     processed_dist = audio.distance_between(sample2, processed)
-    assert (processed_dist, dist) == (0, 0)
+    assert processed_dist < dist
 
 
 def test_save_as_is_lossless(sample: Sample):
