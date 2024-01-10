@@ -1,3 +1,4 @@
+import librosa
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.fft import fft, ifft
@@ -20,11 +21,11 @@ def plot_signal(sample: Sample, title=None, label=None, start=0, length=None):
     plt.grid()
 
 
-def plot_ir_frequency_response(ir:np.array, sr:int, label=None, logscale=False):
+def plot_frequency_response(signal: np.array, sr: int, label=None, logscale=False):
     # Compute the frequency response
     # FFT and frequency bins
-    freq_response = fft(ir)
-    freq_bins = np.fft.fftfreq(len(ir), 1 / sr)
+    freq_response = fft(signal)
+    freq_bins = np.fft.fftfreq(len(signal), 1 / sr)
 
     # Plot the frequency response
     # Only plot the positive frequencies and convert to dB
@@ -32,9 +33,22 @@ def plot_ir_frequency_response(ir:np.array, sr:int, label=None, logscale=False):
     magnitude = 20 * np.log10(np.abs(freq_response[positive_freqs]))
 
     plotfn = plt.semilogx if logscale else plt.plot
-    plotfn(freq_bins[positive_freqs], magnitude, label=label)
+    plotfn(freq_bins[positive_freqs], magnitude, label=label, alpha=0.3)
 
     plt.title("Frequency Response")
     plt.xlabel("Frequency (Hz)")
     plt.ylabel("Magnitude (dB)")
 
+
+def plot_sample_spectrogram(signal: Sample):
+    return plot_spectrogram(signal.signal, signal.sr, signal.name)
+
+
+def plot_spectrogram(signal: np.array, sr: int, title: str = None):
+    D = librosa.stft(signal, )  # STFT of y
+    S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
+
+    fig, ax = plt.subplots()
+    img = librosa.display.specshow(S_db, sr=sr, x_axis='time', y_axis='log', ax=ax)
+    ax.set(title=title)
+    fig.colorbar(img, ax=ax, format="%+2.f dB")

@@ -86,6 +86,14 @@ class Sample():
 
         return ser
 
+    def slice_by_duration(self, start_duration:float, end_duration:float, name:str = None) -> Any:
+        start_idx = audio.duration_to_samples(start_duration, self.sr)
+        end_idx = audio.duration_to_samples(end_duration, self.sr)
+        new_sig = self.signal[start_idx:end_idx]
+        new_name = name if name is not None else self.name + f"[{start_idx}:{end_idx}]"
+        return self.with_signal(new_sig, new_name)
+
+
     def slices(self, duration: float, overlap: float = 0.0) -> List[Any]:
         """
         creates a list of slices by duration and overlap
@@ -96,7 +104,7 @@ class Sample():
         samples = duration_to_samples(duration, self.sr)
         return self._slices(samples_per_slice=samples, overlap=overlap)
 
-    def split_at(self, at_time:float) -> Tuple[Any,Any]:
+    def split_at(self, at_time: float) -> Tuple[Any, Any]:
         assert at_time < self.duration, 'split point time should be less than sample duration'
         split_index = duration_to_samples(at_time, self.sr)
         sig1 = self.signal[0:split_index]
@@ -106,7 +114,6 @@ class Sample():
     def save_as(self, filename, sample_rate=None):
         sample_rate = sample_rate if sample_rate is not None else self.sr
         soundfile.write(filename, self.signal, sample_rate, subtype='PCM_24')
-
 
     def _slices(self, samples_per_slice: int, overlap: float = 0.0) -> List[Any]:
         """
@@ -131,7 +138,7 @@ class Sample():
     def apply_ir(self, impulse_response):
         processed_signal = convolve(self.signal, impulse_response)
         # processed signal will naturally be len(signal)+len(impulse_response)-1 long
-        assert len(processed_signal) == len(self.signal) + len(impulse_response)-1
+        assert len(processed_signal) == len(self.signal) + len(impulse_response) - 1
         # truncate it to preserve signal length
         processed_signal = processed_signal[:len(self.signal)]
         # check we got that right
@@ -173,7 +180,7 @@ def prepare_slices(source: Sample, target: Sample,
                    normalise_loudness_to: float | None,
                    amplitude_threshold: float,
                    normalise_slices: bool,
-                   window_fn) -> List[Tuple[Sample,Sample]]:
+                   window_fn) -> List[Tuple[Sample, Sample]]:
     """
     Prepares a selection of slices from a source and target sample
     :param source:
