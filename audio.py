@@ -17,12 +17,12 @@ logger = logging.getLogger(__name__)
 _MAX_PEAK = 10.0
 
 
-def duration_to_samples(duration: float, sr: float) -> int:
+def duration_to_samples(duration: float, sr: int) -> int:
     return int(sr * duration)
 
 
 class Sample():
-    def __init__(self, signal: np.array, sr: float, name: str = None):
+    def __init__(self, signal: np.array, sr: int, name: str = None):
         self.signal = signal
         self.sr = sr
         self.name = name
@@ -86,13 +86,12 @@ class Sample():
 
         return ser
 
-    def slice_by_duration(self, start_duration:float, end_duration:float, name:str = None) -> Any:
+    def slice_by_duration(self, start_duration: float, end_duration: float, name: str = None) -> Any:
         start_idx = audio.duration_to_samples(start_duration, self.sr)
         end_idx = audio.duration_to_samples(end_duration, self.sr)
         new_sig = self.signal[start_idx:end_idx]
         new_name = name if name is not None else self.name + f"[{start_idx}:{end_idx}]"
         return self.with_signal(new_sig, new_name)
-
 
     def slices(self, duration: float, overlap: float = 0.0) -> List[Any]:
         """
