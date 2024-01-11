@@ -21,6 +21,10 @@ def plot_signal(sample: Sample, title=None, label=None, start=0, length=None):
     plt.grid()
 
 
+def plot_sample_frequency_response(sample: Sample, label=None, logscale=False):
+    plot_frequency_response(sample.signal, sample.sr, label, logscale)
+
+
 def plot_frequency_response(signal: np.array, sr: int, label=None, logscale=False):
     # Compute the frequency response
     # FFT and frequency bins
